@@ -1,0 +1,12 @@
+java/target/
+java/output/
+java/out/
+.idea
+python/python_package_dependency/disk/
+docker_compose/spark_cache/
+docker_compose/mongodb_cache/
+docker_compose/zoo1_cache/
+docker_compose/kafka1_cache/
+docker_compose/kafka2_cache/
+docker_compose/kafka3_cache/
+.DS_Store

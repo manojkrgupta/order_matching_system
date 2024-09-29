@@ -1,0 +1,194 @@
+services:
+
+  spark-master:
+    image: oms-spark:3.5.2
+    hostname: smaster
+    container_name: smaster
+    ports:
+      - "9080:8080"
+      - "7077:7077"
+    volumes:
+      - ./spark_master_apps:/opt/spark-apps
+      - ./spark_master_data:/opt/spark-data
+    environment:
+      - SPARK_LOCAL_IP=spark-master
+      - SPARK_WORKLOAD=master
+    networks:
+      - lan1
+
+  spark-worker-1:
+    image: oms-spark:3.5.2
+    hostname: sworker1
+    container_name: sworker1
+    ports:
+      - "9081:8080"
+      - "7000:7077"
+    depends_on:
+      - spark-master
+    environment:
+      - SPARK_MASTER=spark://spark-master:7077
+      - SPARK_WORKER_CORES=1
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_DRIVER_MEMORY=1G
+      - SPARK_EXECUTOR_MEMORY=1G
+      - SPARK_WORKLOAD=worker
+      - SPARK_LOCAL_IP=spark-worker-1
+    networks:
+      - lan1
+    volumes:
+      - ./spark_worker1_apps:/opt/spark-apps
+      - ./spark_worker1_data:/opt/spark-data
+
+  spark-worker-2:
+    image: oms-spark:3.5.2
+    hostname: sworker2
+    container_name: sworker2
+    ports:
+      - "9082:8080"
+      - "7001:7077"
+    depends_on:
+      - spark-master
+    environment:
+      - SPARK_MASTER=spark://spark-master:7077
+      - SPARK_WORKER_CORES=1
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_DRIVER_MEMORY=1G
+      - SPARK_EXECUTOR_MEMORY=1G
+      - SPARK_WORKLOAD=worker
+      - SPARK_LOCAL_IP=spark-worker-2
+    networks:
+      - lan1
+    volumes:
+      - ./spark_worker2_apps:/opt/spark-apps
+      - ./spark_worker2_data:/opt/spark-data
+
+  zookeeper:
+    image: bitnami/zookeeper:3.5
+    container_name: zookeeper
+    ports:
+      - "2181"
+    networks:
+      - lan1
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    volumes:
+      - ./zoo1_cache:/bitnami/zookeeper
+
+  kafka1:
+    image: bitnami/kafka:3.4.1
+    container_name: kafka1
+    expose:
+      - 9092
+    ports:
+      - "29092:29092"
+    networks:
+      - lan1
+    environment:
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_CFG_BROKER_ID=0
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      - KAFKA_CFG_LISTENERS=INTERNAL://:9092,EXTERNAL://:29092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=INTERNAL://kafka1:9092,EXTERNAL://localhost:29092
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
+    volumes:
+      - ./kafka1_cache:/bitnami/kafka
+    depends_on:
+      - zookeeper
+
+  kafka2:
+    image: bitnami/kafka:3.4.1
+    container_name: kafka2
+    expose:
+      - 9092
+    ports:
+      - "29093:29093"
+    networks:
+      - lan1
+    environment:
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_CFG_BROKER_ID=1
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      - KAFKA_CFG_LISTENERS=INTERNAL://:9092,EXTERNAL://:29093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=INTERNAL://kafka2:9092,EXTERNAL://localhost:29093
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
+    volumes:
+      - ./kafka2_cache:/bitnami/kafka
+    depends_on:
+      - zookeeper
+
+  kafka3:
+    image: bitnami/kafka:3.4.1
+    container_name: kafka3
+    expose:
+      - 9092
+    ports:
+      - "29094:29094"
+    networks:
+      - lan1
+    environment:
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_CFG_BROKER_ID=2
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      - KAFKA_CFG_LISTENERS=INTERNAL://:9092,EXTERNAL://:29094
+      - KAFKA_CFG_ADVERTISED_LISTENERS=INTERNAL://kafka3:9092,EXTERNAL://localhost:29094
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
+    volumes:
+      - ./kafka3_cache:/bitnami/kafka
+    depends_on:
+      - zookeeper
+
+  mongodb:
+    image: mongo:7.0.14
+    container_name: mongodb
+    hostname: mongodb
+    volumes:
+      - ./init_mongodb.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+      - ./mongodb_cache:/data/db/
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin
+      MONGO_INITDB_DATABASE: order_management_system
+    ports:
+      - 27017:27017
+    networks:
+      - lan1
+
+  mongo_web:
+    image: mongo-express:1.0.2
+    container_name: mongo_web
+    restart: always
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+      ME_CONFIG_MONGODB_ADMINPASSWORD: admin
+      ME_CONFIG_MONGODB_PORT: 27017
+      ME_CONFIG_MONGODB_SERVER: 'mongodb'
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: admin
+    ports:
+      - 8084:8081
+    depends_on:
+      - mongodb
+    networks:
+      - lan1
+
+volumes:
+  mongodb_cache:
+    driver: local
+  spark_cache:
+    driver: local
+  zoo1_cache:
+    driver: local
+  kafka1_cache:
+    driver: local
+  kafka2_cache:
+    driver: local
+  kafka3_cache:
+    driver: local
+
+networks:
+  lan1:
+    driver: bridge
+    name: yahoo_network
