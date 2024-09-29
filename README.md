@@ -1,8 +1,11 @@
 ### Introduction
-How to write an order matching system, which is distributed, resilient, parallel processed and horizontal scalable ?
-In this example, we have utilised Apache Spark for distributed, resilient parallel processing of incoming orders.
-We have also used Apache Kafka, to handle incoming orders, serialise them into Apache Spark for parallel processing.
-This is a version 1, and is complete to demonstrate the integration of Kafka, Spark(PySpark with external dependencies) & MongoDB.
+* How to write an order matching system, which is distributed, resilient, parallel processed and horizontally scalable ?
+* In this example, we have utilised Apache Spark for distributed, resilient parallel processing for incoming orders.
+* We have also used Apache Kafka, to handle incoming orders, serialise them into Apache Spark for parallel processing.
+* This is a version 1, and is complete to demonstrate the integration of Kafka, Spark(PySpark with external dependencies) & MongoDB.
+
+### Image representation
+![OMS](design_drawio.gif)
 
 ### Build Spark image (needed only once)
 ```
