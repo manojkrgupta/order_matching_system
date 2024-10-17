@@ -10,6 +10,7 @@ services:
     volumes:
       - ./spark_master_apps:/opt/spark-apps
       - ./spark_master_data:/opt/spark-data
+      - ./oms_python:/opt/spark/bin/oms_python
     environment:
       - SPARK_LOCAL_IP=spark-master
       - SPARK_WORKLOAD=master
@@ -118,66 +119,112 @@ services:
     depends_on:
       - zookeeper
 
-  kafka3:
-    image: bitnami/kafka:3.4.1
-    container_name: kafka3
-    expose:
-      - 9092
-    ports:
-      - "29094:29094"
-    networks:
-      - lan1
-    environment:
-      - ALLOW_PLAINTEXT_LISTENER=yes
-      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
-      - KAFKA_CFG_BROKER_ID=2
-      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
-      - KAFKA_CFG_LISTENERS=INTERNAL://:9092,EXTERNAL://:29094
-      - KAFKA_CFG_ADVERTISED_LISTENERS=INTERNAL://kafka3:9092,EXTERNAL://localhost:29094
-      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
-    volumes:
-      - ./kafka3_cache:/bitnami/kafka
-    depends_on:
-      - zookeeper
+#  kafka3:
+#    image: bitnami/kafka:3.4.1
+#    container_name: kafka3
+#    expose:
+#      - 9092
+#    ports:
+#      - "29094:29094"
+#    networks:
+#      - lan1
+#    environment:
+#      - ALLOW_PLAINTEXT_LISTENER=yes
+#      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+#      - KAFKA_CFG_BROKER_ID=2
+#      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+#      - KAFKA_CFG_LISTENERS=INTERNAL://:9092,EXTERNAL://:29094
+#      - KAFKA_CFG_ADVERTISED_LISTENERS=INTERNAL://kafka3:9092,EXTERNAL://localhost:29094
+#      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
+#    volumes:
+#      - ./kafka3_cache:/bitnami/kafka
+#    depends_on:
+#      - zookeeper
 
-  mongodb:
+  mongo1:
+    hostname: mongo1
+    container_name: mongo1
     image: mongo:7.0.14
-    container_name: mongodb
-    hostname: mongodb
     volumes:
-      - ./init_mongodb.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
-      - ./mongodb_cache:/data/db/
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: admin
-      MONGO_INITDB_DATABASE: order_management_system
-    ports:
-      - 27017:27017
+      - ./init-mongo.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+      - ./repl-mongo.js:/docker-entrypoint-initdb.d/mongo-repl.js:ro
+      - ./mongo1_data:/data/db/
+      - ./mongo1_conf:/data/configdb/
     networks:
       - lan1
+    environment:
+#      MONGO_INITDB_ROOT_USERNAME: admin # commented this since error --> mongo3 | BadValue: security.keyFile is required when authorization is enabled with replica sets
+#      MONGO_INITDB_ROOT_PASSWORD: admin # commented this since error --> mongo3 | BadValue: security.keyFile is required when authorization is enabled with replica sets
+      MONGO_INITDB_DATABASE: order_management_system
+    expose:
+      - 27017
+    ports:
+      - 30001:27017
+    restart: always
+    command: mongod --replSet oms-mongo-rset
+
+  mongo2:
+    hostname: mongo2
+    container_name: mongo2
+    image: mongo:7.0.14
+    volumes:
+#      - ./init_mongodb.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+      - ./mongo2_data:/data/db/
+      - ./mongo2_conf:/data/configdb/
+    networks:
+      - lan1
+    environment:
+#      MONGO_INITDB_ROOT_USERNAME: admin # commented this since error --> mongo3 | BadValue: security.keyFile is required when authorization is enabled with replica sets
+#      MONGO_INITDB_ROOT_PASSWORD: admin # commented this since error --> mongo3 | BadValue: security.keyFile is required when authorization is enabled with replica sets
+      MONGO_INITDB_DATABASE: order_management_system
+    expose:
+      - 27017
+    ports:
+      - 30002:27017
+    restart: always
+    command: mongod --replSet oms-mongo-rset
 
   mongo_web:
     image: mongo-express:1.0.2
     container_name: mongo_web
     restart: always
     environment:
-      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
-      ME_CONFIG_MONGODB_ADMINPASSWORD: admin
+#      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+#      ME_CONFIG_MONGODB_ADMINPASSWORD: admin
       ME_CONFIG_MONGODB_PORT: 27017
-      ME_CONFIG_MONGODB_SERVER: 'mongodb'
+      ME_CONFIG_MONGODB_SERVER: 'mongo1'
       ME_CONFIG_BASICAUTH_USERNAME: admin
       ME_CONFIG_BASICAUTH_PASSWORD: admin
     ports:
       - 8084:8081
     depends_on:
-      - mongodb
+      - mongo1
+      - mongo2
     networks:
       - lan1
 
 volumes:
-  mongodb_cache:
+  oms_python:
     driver: local
-  spark_cache:
+  spark_master_apps:
+    driver: local
+  spark_master_data:
+    driver: local
+  spark_worker1_apps:
+    driver: local
+  spark_worker1_data:
+    driver: local
+  spark_worker2_apps:
+    driver: local
+  spark_worker2_data:
+    driver: local
+  mongo1_data:
+    driver: local
+  mongo1_conf:
+    driver: local
+  mongo2_data:
+    driver: local
+  mongo2_conf:
     driver: local
   zoo1_cache:
     driver: local
@@ -185,8 +232,8 @@ volumes:
     driver: local
   kafka2_cache:
     driver: local
-  kafka3_cache:
-    driver: local
+#  kafka3_cache:
+#    driver: local
 
 networks:
   lan1:
